@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Monteur-App – Fortschrittsberichte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <div class="app">
+
+    <header class="header">
+      <h1>Monteur-App</h1>
+      <p>Fortschrittsberichte Elektro Jungbauer</p>
+    </header>
+
+    <section class="card">
+      <h2>1. Monteur wählen</h2>
+      <label for="monteurSelect">Ich bin:</label>
+      <select id="monteurSelect">
+        <option value="">– bitte wählen –</option>
+        <option>Steiger</option>
+        <option>Zisser</option>
+        <option>Fazlic</option>
+        <option>Oberhofer</option>
+        <option>Lichtenwörther</option>
+        <option>Retzl</option>
+        <option>Haindl</option>
+        <option>Neitsch</option>
+        <option value="_other">+ Anderer (Name selbst eingeben)</option>
+      </select>
+
+      <div id="otherMonteurWrapper" class="hidden">
+        <label for="otherMonteur">Mein Name:</label>
+        <input type="text" id="otherMonteur" placeholder="z.B. Huber">
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. Neuen Bericht melden</h2>
+      <p>
+        Für neue Meldungen verwendest du weiter das bekannte Google-Formular.
+        Die Einträge erscheinen danach automatisch unten in deiner Liste.
+      </p>
+      <button id="openFormBtn" class="primary-btn">
+        Google-Formular öffnen
+      </button>
+    </section>
+
+    <section class="card">
+      <h2>3. Meine Baustellen & letzte Meldungen</h2>
+      <p class="hint">
+        Wähle oben deinen Namen – dann siehst du hier alle Berichte, die du
+        über das Formular gemeldet hast. Eine Zeile = eine Meldung.
+      </p>
+
+      <div id="status" class="status">Bitte Monteur wählen…</div>
+      <div id="reportList" class="report-list"></div>
+    </section>
+
+  </div>
+</body>
+</html>
