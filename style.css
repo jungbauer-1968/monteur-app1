@@ -1,0 +1,138 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  background: #f3f4f6;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.header p {
+  margin: 4px 0 0;
+  color: #4b5563;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+  padding: 16px 14px;
+  margin-bottom: 14px;
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+
+label {
+  display: block;
+  margin: 8px 0 4px;
+  font-weight: 500;
+}
+
+select,
+input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 999px;
+  background: #dc2626;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.primary-btn:active {
+  transform: scale(0.98);
+}
+
+.status {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.hint {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.report-list {
+  margin-top: 10px;
+}
+
+.report-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #f9fafb;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.report-header .baustelle {
+  font-weight: 600;
+}
+
+.report-header .datum {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.report-meta {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+
+.report-text {
+  font-size: 0.85rem;
+  color: #111827;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  font-size: 0.75rem;
+  margin-right: 4px;
+}
+
+.hidden {
+  display: none;
+}
