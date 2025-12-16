@@ -1,74 +1,89 @@
-// >>>>>> HIER DEINE GOOGLE-SHEET-ID <<<<<<
-const SHEET_ID = "1ayC-9NWv1k4jFUtnxDQ5P8tenYfVsI5IOIp6lffPP0w";
+// === KONFIGURATION ===
+// WICHTIG: Das ist die ÖFFENTLICHE Google-Sheet-CSV-URL (Formularantworten)
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/1ayC-9NWv1k4jFUtnxDQ5P8tenYfVsI5IOIp6lffPP0w/export?format=csv&gid=1954522343";
 
-// Name des Tabellenblatts
-const SHEET_NAME = "Formularantworten 1";
+// Google-Formular-Link
+const FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSecipezzn5hUo3X_0378a5JCM0eV-a278T_caoqbbkTKphjJg/viewform";
 
-// CSV-Export-URL (funktioniert nur wenn Sheet öffentlich ist)
-const SHEET_URL =
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+// === DOM ===
+const monteurSelect = document.getElementById("monteurSelect");
+const reportList = document.getElementById("reportList");
+const statusDiv = document.getElementById("status");
+const openFormBtn = document.getElementById("openFormBtn");
 
-let allRows = [];
+// === BUTTON: Formular öffnen ===
+openFormBtn.addEventListener("click", () => {
+  window.open(FORM_URL, "_blank");
+});
 
-// CSV laden
-fetch(SHEET_URL)
-  .then(res => res.text())
-  .then(csv => {
-    const lines = csv.split("\n").map(l => l.split(","));
-    const header = lines.shift();
+// === MONTEUR AUSGEWÄHLT ===
+monteurSelect.addEventListener("change", () => {
+  const monteur = monteurSelect.value.trim();
+  reportList.innerHTML = "";
 
-    allRows = lines.map(row => {
-      const obj = {};
-      header.forEach((h, i) => {
-        obj[h.replaceAll('"', "").trim()] =
-          (row[i] || "").replaceAll('"', "").trim();
-      });
-      return obj;
-    });
-
-    fillMonteurDropdown();
-  });
-
-// Dropdown füllen
-function fillMonteurDropdown() {
-  const select = document.getElementById("monteurSelect");
-  const monteure = [...new Set(allRows.map(r => r["Monteur / Team"]).filter(Boolean))];
-
-  monteure.forEach(name => {
-    const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    select.appendChild(opt);
-  });
-}
-
-// Meldungen anzeigen
-function showReports() {
-  const name = document.getElementById("monteurSelect").value;
-  const box = document.getElementById("reportList");
-  box.innerHTML = "";
-
-  if (!name) return;
-
-  const filtered = allRows.filter(r => r["Monteur / Team"] === name);
-
-  if (filtered.length === 0) {
-    box.innerHTML = "<p>Keine Meldungen gefunden.</p>";
+  if (!monteur) {
+    statusDiv.textContent = "Bitte Monteur wählen…";
     return;
   }
 
-  filtered.reverse().forEach(r => {
-    const div = document.createElement("div");
-    div.className = "report";
+  statusDiv.textContent = "Lade Berichte…";
+  loadReports(monteur);
+});
 
-    div.innerHTML = `
-      <strong>${r["Projekt / Baustelle"]}</strong><br>
-      Datum: ${r["Datum"]} | Woche: ${r["Woche / Zeitraum"]}<br>
-      Baustelleneinrichtung: ${r["Baustelleneinrichtung (%)"] || "-"}<br>
-      Zuleitung: ${r["Zuleitung & Zählerplätze (%)"] || "-"}<br>
-      Rohr & Tragsysteme: ${r["Rohr- und Tragsysteme (%)"] || "-"}
-      <hr>
-    `;
-    box.appendChild(div);
-  });
+// === CSV LADEN + FILTERN ===
+async function loadReports(monteur) {
+  try {
+    const res = await fetch(SHEET_CSV_URL);
+    const text = await res.text();
+
+    const rows = parseCSV(text);
+    const header = rows[0];
+
+    const monteurIndex = header.indexOf("Monteur / Team");
+    const projektIndex = header.indexOf("Projekt / Baustelle");
+    const datumIndex = header.indexOf("Datum");
+    const wocheIndex = header.indexOf("Woche / Zeitraum");
+
+    const dataRows = rows.slice(1).filter(
+      (r) => r[monteurIndex]?.trim() === monteur
+    );
+
+    if (dataRows.length === 0) {
+      statusDiv.textContent = "Keine Meldungen gefunden.";
+      return;
+    }
+
+    statusDiv.textContent = `${dataRows.length} Meldung(en) gefunden`;
+
+    dataRows
+      .reverse() // neueste oben
+      .forEach((r) => {
+        const card = document.createElement("div");
+        card.className = "report-card";
+
+        card.innerHTML = `
+          <strong>${r[projektIndex]}</strong><br>
+          Datum: ${r[datumIndex]}<br>
+          Woche: ${r[wocheIndex]}
+        `;
+
+        reportList.appendChild(card);
+      });
+  } catch (err) {
+    console.error(err);
+    statusDiv.textContent = "Fehler beim Laden der Daten.";
+  }
+}
+
+// === CSV PARSER (einfach & stabil) ===
+function parseCSV(text) {
+  return text
+    .split("\n")
+    .map((row) =>
+      row
+        .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+        .map((c) => c.replace(/^"|"$/g, "").trim())
+    );
 }
