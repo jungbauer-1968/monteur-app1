@@ -1,74 +1,78 @@
-const SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1dD709i76hdP2VOFGo48oNeOr-YsbAF6ZVBwlQvkY3DM/gviz/tq?tqx=out:json&sheet=Formularantworten%201";
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/1ayC-9NWv1k4jFUtnxDQ5P8tenYfVsI5IOIp6lffPP0w/export?format=csv&gid=1954522343";
 
-async function loadReports(monteur) {
-  const status = document.getElementById("status");
-  const list = document.getElementById("reportList");
+const monteurSelect = document.getElementById("monteurSelect");
+const statusEl = document.getElementById("status");
+const reportList = document.getElementById("reportList");
 
-  status.textContent = "Lade Berichte …";
-  list.innerHTML = "";
+/* Google Formular Button */
+document.getElementById("openFormBtn").addEventListener("click", () => {
+  window.open(
+    "https://docs.google.com/forms/d/e/1FAIpQLSecipezzn5hUo3X_0378a5JCM0eV-a278T_caoqbbkTKphjJg/viewform",
+    "_blank"
+  );
+});
+
+/* Monteur Auswahl */
+monteurSelect.addEventListener("change", () => {
+  const name = monteurSelect.value;
+  if (!name) {
+    statusEl.textContent = "Bitte Monteur wählen…";
+    reportList.innerHTML = "";
+    return;
+  }
+  loadReports(name);
+});
+
+/* Daten laden */
+async function loadReports(monteurName) {
+  statusEl.textContent = "Berichte werden geladen…";
+  reportList.innerHTML = "";
 
   try {
-    const res = await fetch(SHEET_URL);
+    const res = await fetch(SHEET_CSV_URL);
     const text = await res.text();
-    const json = JSON.parse(text.substring(47).slice(0, -2));
+    const rows = text.split("\n").map(r => r.split(","));
 
-    const rows = json.table.rows.map(r =>
-      r.c.map(c => (c ? c.v : ""))
+    const header = rows.shift();
+
+    // Spalten-Indizes
+    const col = {
+      zeit: header.indexOf("Zeitstempel"),
+      projekt: header.indexOf("Projekt / Baustelle"),
+      datum: header.indexOf("Datum"),
+      monteur: header.indexOf("Monteur / Team"),
+      woche: header.indexOf("Woche / Zeitraum"),
+      einrichtung: header.indexOf("Baustelleneinrichtung (%)"),
+      zuleitung: header.indexOf("Zuleitung & Zählerplätze (%)"),
+      rohr: header.indexOf("Rohr- und Tragsysteme (%)"),
+    };
+
+    const filtered = rows.filter(
+      r => r[col.monteur] && r[col.monteur].trim() === monteurName
     );
 
-    // Header weg
-    rows.shift();
+    statusEl.textContent = `${filtered.length} Meldung(en) gefunden`;
 
-    const filtered = rows.filter(r => r[3] === monteur);
-
-    status.textContent = `${filtered.length} Meldung(en) gefunden`;
-
-    if (filtered.length === 0) {
-      list.innerHTML = "<p>Keine Meldungen vorhanden.</p>";
-      return;
-    }
+    if (filtered.length === 0) return;
 
     filtered.reverse().forEach(r => {
       const div = document.createElement("div");
       div.className = "report-item";
-
       div.innerHTML = `
-        <strong>${r[1]}</strong><br>
-        Datum: ${r[2]}<br>
-        Woche: ${r[4]}<br><br>
-
-        <b>Leistungsfortschritt:</b><br>
-        Baustelleneinrichtung: ${r[8]}<br>
-        Zuleitung & Zählerplätze: ${r[9]}<br>
-        Rohr- & Tragsysteme: ${r[10]}<br>
-        Kabel & Leitungen: ${r[11]}
+        <strong>${r[col.projekt]}</strong><br>
+        Datum: ${r[col.datum]}<br>
+        Woche: ${r[col.woche]}<br>
+        <hr>
+        Baustelleneinrichtung: ${r[col.einrichtung] || "–"}<br>
+        Zuleitung & Zählerplätze: ${r[col.zuleitung] || "–"}<br>
+        Rohr- & Tragsysteme: ${r[col.rohr] || "–"}
       `;
-
-      list.appendChild(div);
+      reportList.appendChild(div);
     });
 
-  } catch (e) {
-    status.textContent = "Fehler beim Laden der Berichte";
-    console.error(e);
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "Fehler beim Laden der Berichte";
   }
 }
-
-// Monteur-Auswahl
-document.getElementById("monteurSelect").addEventListener("change", e => {
-  let name = e.target.value;
-
-  if (name === "_other") {
-    document.getElementById("otherMonteurWrapper").classList.remove("hidden");
-    document.getElementById("otherMonteur").addEventListener("input", ev => {
-      if (ev.target.value.length > 1) {
-        loadReports(ev.target.value);
-      }
-    });
-    return;
-  }
-
-  document.getElementById("otherMonteurWrapper").classList.add("hidden");
-
-  if (name) loadReports(name);
-});
