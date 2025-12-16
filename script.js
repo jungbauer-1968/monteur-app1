@@ -1,7 +1,7 @@
 const SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1ayC-9NWv1k4jFUtnxDQ5P8tenYfVsI5IOIp6lffPP0w/gviz/tq?tqx=out:json";
+  "https://docs.google.com/spreadsheets/d/1dD709i76hdP2VOFGo48oNeOr-YsbAF6ZVBwlQvkY3DM/gviz/tq?tqx=out:json&sheet=Formularantworten%201";
 
-async function loadReports(monteurName) {
+async function loadReports(monteur) {
   const status = document.getElementById("status");
   const list = document.getElementById("reportList");
 
@@ -11,70 +11,64 @@ async function loadReports(monteurName) {
   try {
     const res = await fetch(SHEET_URL);
     const text = await res.text();
-
     const json = JSON.parse(text.substring(47).slice(0, -2));
-    const cols = json.table.cols.map(c => c.label);
-    const rows = json.table.rows;
 
-    // Spaltenindex per Name finden
-    const idx = name => cols.indexOf(name);
-
-    const iProjekt = idx("Projekt / Baustelle");
-    const iDatum = idx("Datum");
-    const iMonteur = idx("Monteur / Team");
-    const iWoche = idx("Woche / Zeitraum");
-
-    // Prozent-Spalten
-    const percentCols = cols
-      .map((c, i) => c.includes("(%)") ? { name: c, index: i } : null)
-      .filter(Boolean);
-
-    const myRows = rows.filter(r =>
-      r.c[iMonteur] &&
-      r.c[iMonteur].v.toLowerCase() === monteurName.toLowerCase()
+    const rows = json.table.rows.map(r =>
+      r.c.map(c => (c ? c.v : ""))
     );
 
-    status.textContent = `${myRows.length} Meldung(en) gefunden`;
+    // Header weg
+    rows.shift();
 
-    if (myRows.length === 0) return;
+    const filtered = rows.filter(r => r[3] === monteur);
 
-    myRows.reverse().forEach(r => {
-      const card = document.createElement("div");
-      card.className = "report-card";
+    status.textContent = `${filtered.length} Meldung(en) gefunden`;
 
-      let html = `
-        <strong>${r.c[iProjekt]?.v || "–"}</strong><br>
-        Datum: ${r.c[iDatum]?.v || "–"}<br>
-        Woche: ${r.c[iWoche]?.v || "–"}<br><br>
-        <u>Leistungsstand:</u><br>
+    if (filtered.length === 0) {
+      list.innerHTML = "<p>Keine Meldungen vorhanden.</p>";
+      return;
+    }
+
+    filtered.reverse().forEach(r => {
+      const div = document.createElement("div");
+      div.className = "report-item";
+
+      div.innerHTML = `
+        <strong>${r[1]}</strong><br>
+        Datum: ${r[2]}<br>
+        Woche: ${r[4]}<br><br>
+
+        <b>Leistungsfortschritt:</b><br>
+        Baustelleneinrichtung: ${r[8]}<br>
+        Zuleitung & Zählerplätze: ${r[9]}<br>
+        Rohr- & Tragsysteme: ${r[10]}<br>
+        Kabel & Leitungen: ${r[11]}
       `;
 
-      percentCols.forEach(p => {
-        const val = r.c[p.index]?.v;
-        if (val !== null && val !== undefined && val !== "")
-          html += `${p.name}: <b>${val}</b><br>`;
-      });
-
-      card.innerHTML = html;
-      list.appendChild(card);
+      list.appendChild(div);
     });
 
-  } catch (err) {
-    console.error(err);
-    status.textContent = "❌ Fehler beim Laden der Berichte";
+  } catch (e) {
+    status.textContent = "Fehler beim Laden der Berichte";
+    console.error(e);
   }
 }
 
 // Monteur-Auswahl
-document.getElementById("monteurSelect").addEventListener("change", () => {
-  const sel = document.getElementById("monteurSelect").value;
-  if (sel) loadReports(sel);
-});
+document.getElementById("monteurSelect").addEventListener("change", e => {
+  let name = e.target.value;
 
-// Google Formular Button
-document.getElementById("openFormBtn").onclick = () => {
-  window.open(
-    "https://docs.google.com/forms/d/e/1FAIpQLSecipezzn5hUo3X_0378a5JCM0eV-a278T_caoqbbkTKphjJg/viewform",
-    "_blank"
-  );
-};
+  if (name === "_other") {
+    document.getElementById("otherMonteurWrapper").classList.remove("hidden");
+    document.getElementById("otherMonteur").addEventListener("input", ev => {
+      if (ev.target.value.length > 1) {
+        loadReports(ev.target.value);
+      }
+    });
+    return;
+  }
+
+  document.getElementById("otherMonteurWrapper").classList.add("hidden");
+
+  if (name) loadReports(name);
+});
