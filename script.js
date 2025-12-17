@@ -1,43 +1,56 @@
+// 🔴 WICHTIG: DAS ist die CSV-URL von "Formularantworten 1"
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1ayC-9NWv1k4jFUtnxDQ5P8tenYfVsI5IOIp6lffPP0w/export?format=csv&gid=1954522343";
 
 const monteurSelect = document.getElementById("monteurSelect");
 const reportList = document.getElementById("reportList");
 const statusEl = document.getElementById("status");
+const openFormBtn = document.getElementById("openFormBtn");
 
+// 🔗 Google-Formular öffnen
+openFormBtn.addEventListener("click", () => {
+  window.open(
+    "https://docs.google.com/forms/d/e/1FAIpQLSecipezzn5hUo3X_0378a5JCM0eV-a278T_caoqbbkTKphjJg/viewform",
+    "_blank"
+  );
+});
+
+// 👤 Monteur Auswahl
 monteurSelect.addEventListener("change", loadReports);
 
 async function loadReports() {
   const monteur = getSelectedMonteur();
+
   reportList.innerHTML = "";
+  statusEl.textContent = "Lade Berichte…";
 
   if (!monteur) {
     statusEl.textContent = "Bitte Monteur wählen…";
     return;
   }
 
-  statusEl.textContent = "Lade Berichte…";
-
   try {
     const res = await fetch(SHEET_CSV_URL);
     const text = await res.text();
+
     const rows = parseCSV(text);
-
     const header = rows[0];
-    const data = rows.slice(1);
 
-    const idxProjekt = header.indexOf("Projekt / Baustelle");
+    // Spalten finden (exakt wie im Sheet)
+    const idxProjekt = header.indexOf("Projekt/ Baustelle");
     const idxDatum = header.indexOf("Datum");
     const idxMonteur = header.indexOf("Monteur / Team");
     const idxWoche = header.indexOf("Woche / Zeitraum");
 
-    const meine = data.filter(r => r[idxMonteur] === monteur);
+    const matches = rows
+      .slice(1)
+      .filter(r => r[idxMonteur]?.trim() === monteur);
 
-    statusEl.textContent = `${meine.length} Meldung(en) gefunden`;
+    statusEl.textContent = `${matches.length} Meldung(en) gefunden`;
 
-    if (meine.length === 0) return;
+    if (matches.length === 0) return;
 
-    meine.reverse().forEach(r => {
+    matches.reverse().forEach(r => {
       const div = document.createElement("div");
       div.className = "report-item";
       div.innerHTML = `
@@ -48,22 +61,26 @@ async function loadReports() {
       reportList.appendChild(div);
     });
 
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error(err);
     statusEl.textContent = "Fehler beim Laden der Berichte";
   }
 }
 
+// 🔧 Helfer
 function getSelectedMonteur() {
   if (monteurSelect.value === "_other") {
-    return document.getElementById("otherMonteur").value.trim();
+    return document.getElementById("otherMonteur")?.value?.trim();
   }
   return monteurSelect.value;
 }
 
 function parseCSV(text) {
   return text
-    .trim()
     .split("\n")
-    .map(r => r.split(",").map(v => v.replace(/^"|"$/g, "")));
+    .map(row =>
+      row
+        .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+        .map(cell => cell.replace(/^"|"$/g, "").trim())
+    );
 }
