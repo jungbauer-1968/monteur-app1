@@ -1,90 +1,127 @@
+// 🔗 HIER DEIN GOOGLE FORM LINK
+const GOOGLE_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSecipezzn5hUo3X_0378a5JCM0eV-a278T_caoqbbkTKphjJg/viewform";
+
+// 📄 CSV-Export des Antwort-Sheets (Formularantworten 1)
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1ayC-9NWv1k4jFUtnxDQ5P8tenYfVsI5IOIp6lffPP0w/export?format=csv&gid=1954522343";
 
 const monteurSelect = document.getElementById("monteurSelect");
 const reportList = document.getElementById("reportList");
-const statusEl = document.getElementById("status");
+const status = document.getElementById("status");
+const openFormBtn = document.getElementById("openFormBtn");
 
-monteurSelect.addEventListener("change", loadReports);
+// 🔴 BUTTON: Google Formular öffnen
+openFormBtn.addEventListener("click", () => {
+  window.open(GOOGLE_FORM_URL, "_blank");
+});
 
-async function loadReports() {
-  const monteur = getSelectedMonteur();
-  reportList.innerHTML = "";
+// 🔄 Reaktion auf Monteur-Auswahl
+monteurSelect.addEventListener("change", () => {
+  const name =
+    monteurSelect.value === "_other"
+      ? document.getElementById("otherMonteur").value.trim()
+      : monteurSelect.value;
 
-  if (!monteur) {
-    statusEl.textContent = "Bitte Monteur wählen…";
+  if (!name) {
+    status.textContent = "Bitte Monteur wählen…";
+    reportList.innerHTML = "";
     return;
   }
 
-  statusEl.textContent = "Lade Berichte…";
+  loadReports(name);
+});
+
+// 📥 Reports laden
+async function loadReports(monteurName) {
+  status.textContent = "Lade Meldungen…";
+  reportList.innerHTML = "";
 
   try {
     const res = await fetch(SHEET_CSV_URL);
     const text = await res.text();
     const rows = parseCSV(text);
 
-    // Kopfzeile raus
-    rows.shift();
+    const header = rows[0];
+    const data = rows.slice(1);
 
-    const filtered = rows.filter(
-      r => (r[3] || "").trim().toLowerCase() === monteur.toLowerCase()
+    const monteurIndex = header.indexOf("Monteur / Team");
+    const projektIndex = header.indexOf("Projekt / Baustelle");
+    const datumIndex = header.indexOf("Datum");
+    const wocheIndex = header.indexOf("Woche / Zeitraum");
+
+    const prozentColumns = header
+      .map((h, i) => ({ h, i }))
+      .filter(col => col.h.includes("(%)"));
+
+    const gefiltert = data.filter(
+      r => r[monteurIndex]?.trim() === monteurName
     );
 
-    statusEl.textContent = `${filtered.length} Meldung(en) gefunden`;
+    status.textContent = `${gefiltert.length} Meldung(en) gefunden`;
 
-    filtered.forEach(r => {
-      const card = document.createElement("div");
-      card.className = "report-card";
+    if (gefiltert.length === 0) {
+      reportList.innerHTML = "<em>Keine Meldungen gefunden.</em>";
+      return;
+    }
 
-      card.innerHTML = `
-        <strong>${r[1] || "–"}</strong><br>
-        Datum: ${r[2] || "–"}<br>
-        Woche: ${r[4] || "–"}<br><br>
+    gefiltert.reverse().forEach(row => {
+      const div = document.createElement("div");
+      div.className = "report-item";
 
-        <u>Leistungsfortschritt:</u><br>
-        Baustelleneinrichtung: ${r[8] || "–"}<br>
-        Zuleitung & Zählerplätze: ${r[9] || "–"}<br>
-        Rohr- & Tragsysteme: ${r[10] || "–"}<br>
-        Kabel & Leitungen: ${r[11] || "–"}<br>
-        Schalt- & Steckgeräte: ${r[12] || "–"}<br>
-        PV-Anlage: ${r[13] || "–"}<br>
-        Beleuchtung: ${r[14] || "–"}<br>
-        Außenbeleuchtung: ${r[15] || "–"}<br>
-        Antennenanlage: ${r[16] || "–"}<br>
-        Brandrauchmelder: ${r[17] || "–"}<br>
-        Dokumentation: ${r[18] || "–"}<br>
-        Allgemeinkosten: ${r[19] || "–"}<br>
-        NSP Verteilung: ${r[20] || "–"}<br>
-        Erdung & Blitzschutz: ${r[21] || "–"}<br>
-        Kommunikationsanlagen: ${r[22] || "–"}<br>
-        Demontagen & Montagen: ${r[23] || "–"}<br>
-        Planung / Inbetriebnahme: ${r[24] || "–"}<br>
-        Tiefgarage: ${r[25] || "–"}<br>
-        Rohinstallation Decke: ${r[26] || "–"}<br>
-        Rohinstallation Wände: ${r[27] || "–"}<br>
-        Leuchten: ${r[28] || "–"}<br>
-        Kabel einziehen: ${r[29] || "–"}<br>
-        Gegensprechanlage: ${r[30] || "–"}
+      let html = `
+        <strong>${row[projektIndex]}</strong><br>
+        Datum: ${row[datumIndex]}<br>
+        Woche: ${row[wocheIndex]}<br>
       `;
 
-      reportList.appendChild(card);
+      // 📊 Prozentanzeige
+      html += "<br><strong>Leistungsfortschritt:</strong><br>";
+      prozentColumns.forEach(col => {
+        const val = row[col.i];
+        if (val) {
+          html += `${col.h.replace("(%)", "")}: ${val}<br>`;
+        }
+      });
+
+      div.innerHTML = html;
+      reportList.appendChild(div);
     });
-
-  } catch (e) {
-    console.error(e);
-    statusEl.textContent = "Fehler beim Laden der Berichte";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Fehler beim Laden der Berichte";
   }
 }
 
-function getSelectedMonteur() {
-  if (monteurSelect.value === "_other") {
-    return document.getElementById("otherMonteur").value.trim();
-  }
-  return monteurSelect.value;
-}
-
+// 📑 CSV Parser (stabil)
 function parseCSV(text) {
-  return text
-    .split("\n")
-    .map(r => r.split(",").map(c => c.replace(/^"|"$/g, "").trim()));
+  const rows = [];
+  let row = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"' && next === '"') {
+      current += '"';
+      i++;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      row.push(current);
+      current = "";
+    } else if (char === "\n" && !inQuotes) {
+      row.push(current);
+      rows.push(row);
+      row = [];
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  row.push(current);
+  rows.push(row);
+  return rows;
 }
