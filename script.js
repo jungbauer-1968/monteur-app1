@@ -1,76 +1,84 @@
-// 🔴 WICHTIG: DAS ist die CSV-URL von "Formularantworten 1"
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1ayC-9NWv1k4jFUtnxDQ5P8tenYfVsI5IOIp6lffPP0w/export?format=csv&gid=1954522343";
 
 const monteurSelect = document.getElementById("monteurSelect");
 const reportList = document.getElementById("reportList");
 const statusEl = document.getElementById("status");
-const openFormBtn = document.getElementById("openFormBtn");
 
-// 🔗 Google-Formular öffnen
-openFormBtn.addEventListener("click", () => {
-  window.open(
-    "https://docs.google.com/forms/d/e/1FAIpQLSecipezzn5hUo3X_0378a5JCM0eV-a278T_caoqbbkTKphjJg/viewform",
-    "_blank"
-  );
-});
-
-// 👤 Monteur Auswahl
 monteurSelect.addEventListener("change", loadReports);
 
 async function loadReports() {
   const monteur = getSelectedMonteur();
-
   reportList.innerHTML = "";
-  statusEl.textContent = "Lade Berichte…";
 
   if (!monteur) {
     statusEl.textContent = "Bitte Monteur wählen…";
     return;
   }
 
+  statusEl.textContent = "Lade Berichte…";
+
   try {
     const res = await fetch(SHEET_CSV_URL);
     const text = await res.text();
-
     const rows = parseCSV(text);
-    const header = rows[0];
 
-    // Spalten finden (exakt wie im Sheet)
-    const idxProjekt = header.indexOf("Projekt/ Baustelle");
-    const idxDatum = header.indexOf("Datum");
-    const idxMonteur = header.indexOf("Monteur / Team");
-    const idxWoche = header.indexOf("Woche / Zeitraum");
+    // Kopfzeile raus
+    rows.shift();
 
-    const matches = rows
-      .slice(1)
-      .filter(r => r[idxMonteur]?.trim() === monteur);
+    const filtered = rows.filter(
+      r => (r[3] || "").trim().toLowerCase() === monteur.toLowerCase()
+    );
 
-    statusEl.textContent = `${matches.length} Meldung(en) gefunden`;
+    statusEl.textContent = `${filtered.length} Meldung(en) gefunden`;
 
-    if (matches.length === 0) return;
+    filtered.forEach(r => {
+      const card = document.createElement("div");
+      card.className = "report-card";
 
-    matches.reverse().forEach(r => {
-      const div = document.createElement("div");
-      div.className = "report-item";
-      div.innerHTML = `
-        <strong>${r[idxProjekt]}</strong><br>
-        Datum: ${r[idxDatum]}<br>
-        Woche: ${r[idxWoche]}
+      card.innerHTML = `
+        <strong>${r[1] || "–"}</strong><br>
+        Datum: ${r[2] || "–"}<br>
+        Woche: ${r[4] || "–"}<br><br>
+
+        <u>Leistungsfortschritt:</u><br>
+        Baustelleneinrichtung: ${r[8] || "–"}<br>
+        Zuleitung & Zählerplätze: ${r[9] || "–"}<br>
+        Rohr- & Tragsysteme: ${r[10] || "–"}<br>
+        Kabel & Leitungen: ${r[11] || "–"}<br>
+        Schalt- & Steckgeräte: ${r[12] || "–"}<br>
+        PV-Anlage: ${r[13] || "–"}<br>
+        Beleuchtung: ${r[14] || "–"}<br>
+        Außenbeleuchtung: ${r[15] || "–"}<br>
+        Antennenanlage: ${r[16] || "–"}<br>
+        Brandrauchmelder: ${r[17] || "–"}<br>
+        Dokumentation: ${r[18] || "–"}<br>
+        Allgemeinkosten: ${r[19] || "–"}<br>
+        NSP Verteilung: ${r[20] || "–"}<br>
+        Erdung & Blitzschutz: ${r[21] || "–"}<br>
+        Kommunikationsanlagen: ${r[22] || "–"}<br>
+        Demontagen & Montagen: ${r[23] || "–"}<br>
+        Planung / Inbetriebnahme: ${r[24] || "–"}<br>
+        Tiefgarage: ${r[25] || "–"}<br>
+        Rohinstallation Decke: ${r[26] || "–"}<br>
+        Rohinstallation Wände: ${r[27] || "–"}<br>
+        Leuchten: ${r[28] || "–"}<br>
+        Kabel einziehen: ${r[29] || "–"}<br>
+        Gegensprechanlage: ${r[30] || "–"}
       `;
-      reportList.appendChild(div);
+
+      reportList.appendChild(card);
     });
 
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
     statusEl.textContent = "Fehler beim Laden der Berichte";
   }
 }
 
-// 🔧 Helfer
 function getSelectedMonteur() {
   if (monteurSelect.value === "_other") {
-    return document.getElementById("otherMonteur")?.value?.trim();
+    return document.getElementById("otherMonteur").value.trim();
   }
   return monteurSelect.value;
 }
@@ -78,9 +86,5 @@ function getSelectedMonteur() {
 function parseCSV(text) {
   return text
     .split("\n")
-    .map(row =>
-      row
-        .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-        .map(cell => cell.replace(/^"|"$/g, "").trim())
-    );
+    .map(r => r.split(",").map(c => c.replace(/^"|"$/g, "").trim()));
 }
