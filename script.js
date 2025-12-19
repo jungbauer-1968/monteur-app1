@@ -1,100 +1,106 @@
-// ====== KONFIG ======
-const SHEET_ID = "1dD709i76hdP2VOFGo48oNeOr-YsbAF6ZVBwlQvkY3DM";
-const SHEET_NAME = "Formularantworten 1";
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/1ayC-9NWv1k4jFUtnxDQ5P8tenYfVsI5IOIp6lffPP0w/export?format=csv&gid=1954522343";
 
-// Spaltennummern (A=0, B=1, ...)
-const COL_ZEIT = 0;
-const COL_PROJEKT = 1;
-const COL_KW = 2;
-const COL_MONTEUR = 3;
-
-// Prozent-Spalten (anpassen falls nötig)
-const PERCENT_COLS = [
-  { name: "Rohinstallation", col: 10 },
-  { name: "Kabelziehen", col: 11 },
-  { name: "Schalter & Steckdosen", col: 12 },
-  { name: "Leuchten", col: 13 },
-  { name: "Verteiler", col: 14 }
-];
-
-// Bilder (Dateiupload – letzte Spalte, AF = 31)
-const COL_IMAGES = 31;
-
-// Google Formular
+// 🔗 DEIN GOOGLE FORMULAR
 const GOOGLE_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSecipezzn5hUo3X_0378a5JCM0eV-a278T_caoqbbkTKphjJg/viewform";
 
-// ====== BUTTON ======
-document.getElementById("openFormBtn").onclick = () => {
+const monteurSelect = document.getElementById("monteurSelect");
+const reportList = document.getElementById("reportList");
+const statusEl = document.getElementById("status");
+const openFormBtn = document.getElementById("openFormBtn");
+
+openFormBtn.addEventListener("click", () => {
   window.open(GOOGLE_FORM_URL, "_blank");
-};
+});
 
-// ====== MONTEUR AUSWAHL ======
-document.getElementById("monteurSelect").addEventListener("change", loadReports);
+monteurSelect.addEventListener("change", loadReports);
 
-// ====== LADEN ======
 async function loadReports() {
-  const select = document.getElementById("monteurSelect");
-  let monteur = select.value;
+  const monteur = getSelectedMonteur();
+  reportList.innerHTML = "";
 
-  if (monteur === "_other") {
-    monteur = document.getElementById("otherMonteur").value.trim();
+  if (!monteur) {
+    statusEl.textContent = "Bitte Monteur wählen…";
+    return;
   }
 
-  if (!monteur) return;
+  statusEl.textContent = "Lade Berichte…";
 
-  document.getElementById("status").innerText = "Lade Berichte …";
-  document.getElementById("reportList").innerHTML = "";
+  try {
+    const res = await fetch(SHEET_CSV_URL);
+    const text = await res.text();
+    const rows = parseCSV(text);
 
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(
-    SHEET_NAME
-  )}`;
+    rows.shift(); // Kopfzeile weg
 
-  const res = await fetch(url);
-  const text = await res.text();
-  const json = JSON.parse(text.substring(47, text.length - 2));
-  const rows = json.table.rows;
+    const filtered = rows.filter(
+      r => (r[3] || "").trim().toLowerCase() === monteur.toLowerCase()
+    );
 
-  let count = 0;
+    statusEl.textContent = `${filtered.length} Meldung(en) gefunden`;
 
-  rows.forEach((r) => {
-    const cells = r.c;
-    if (!cells[COL_MONTEUR] || cells[COL_MONTEUR].v !== monteur) return;
+    filtered.forEach(r => {
+      const card = document.createElement("div");
+      card.className = "report-card";
 
-    count++;
+      const bildLink = r[31]; // 🔴 HIER: Spalte mit Bild-Link (anpassen falls nötig)
 
-    const projekt = cells[COL_PROJEKT]?.v || "";
-    const kw = cells[COL_KW]?.v || "";
-    const zeit = cells[COL_ZEIT]?.f || "";
+      card.innerHTML = `
+        <strong>${r[1] || "–"}</strong><br>
+        Datum: ${r[2] || "–"}<br>
+        Kalenderwoche: ${r[4] || "–"}<br><br>
 
-    let percentHtml = "";
-    PERCENT_COLS.forEach((p) => {
-      const val = cells[p.col]?.v;
-      if (val !== null && val !== undefined && val !== "")
-        percentHtml += `<div><strong>${p.name}:</strong> ${val} %</div>`;
+        <u>Leistungsfortschritt:</u><br>
+        Baustelleneinrichtung: ${r[8] || "–"}<br>
+        Zuleitung & Zählerplätze: ${r[9] || "–"}<br>
+        Rohr- & Tragsysteme: ${r[10] || "–"}<br>
+        Kabel & Leitungen: ${r[11] || "–"}<br>
+        Schalt- & Steckgeräte: ${r[12] || "–"}<br>
+        PV-Anlage: ${r[13] || "–"}<br>
+        Beleuchtung: ${r[14] || "–"}<br>
+        Außenbeleuchtung: ${r[15] || "–"}<br>
+        Antennenanlage: ${r[16] || "–"}<br>
+        Brandrauchmelder: ${r[17] || "–"}<br>
+        Dokumentation: ${r[18] || "–"}<br>
+        Allgemeinkosten: ${r[19] || "–"}<br>
+        NSP Verteilung: ${r[20] || "–"}<br>
+        Erdung & Blitzschutz: ${r[21] || "–"}<br>
+        Kommunikation: ${r[22] || "–"}<br>
+        Demontagen: ${r[23] || "–"}<br>
+        Planung / IB: ${r[24] || "–"}<br>
+        Tiefgarage: ${r[25] || "–"}<br>
+        Rohinstallation Decke: ${r[26] || "–"}<br>
+        Rohinstallation Wände: ${r[27] || "–"}<br>
+        Leuchten: ${r[28] || "–"}<br>
+        Kabel einziehen: ${r[29] || "–"}<br>
+        Gegensprechanlage: ${r[30] || "–"}<br><br>
+
+        ${
+          bildLink
+            ? `<a href="${bildLink}" target="_blank">📷 Bilder ansehen</a>`
+            : `<em>Keine Bilder</em>`
+        }
+      `;
+
+      reportList.appendChild(card);
     });
 
-    let imagesHtml = "";
-    const imgCell = cells[COL_IMAGES]?.v;
-    if (imgCell) {
-      imgCell.split(",").forEach((link) => {
-        imagesHtml += `<a href="${link.trim()}" target="_blank">📷 Bild öffnen</a><br>`;
-      });
-    }
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = "Fehler beim Laden der Berichte";
+  }
+}
 
-    document.getElementById("reportList").innerHTML += `
-      <div class="report-card">
-        <div><strong>${projekt}</strong></div>
-        <div>KW ${kw}</div>
-        <div class="small">${zeit}</div>
-        <hr>
-        ${percentHtml || "<i>Keine Prozentangaben</i>"}
-        <hr>
-        ${imagesHtml || "<i>Keine Bilder</i>"}
-      </div>
-    `;
-  });
+function getSelectedMonteur() {
+  if (monteurSelect.value === "_other") {
+    return document.getElementById("otherMonteur").value.trim();
+  }
+  return monteurSelect.value;
+}
 
-  document.getElementById("status").innerText =
-    count === 0 ? "0 Meldungen gefunden" : `${count} Meldungen gefunden`;
+function parseCSV(text) {
+  return text
+    .split("\n")
+    .map(r => r.split(",").map(c => c.replace(/^"|"$/g, "").trim()));
 }
